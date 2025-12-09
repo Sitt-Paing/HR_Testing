@@ -4,6 +4,7 @@ using Hr_Testing.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Dynamic.Core;
 
 namespace Hr_Testing.Controllers
 {
@@ -95,6 +96,29 @@ namespace Hr_Testing.Controllers
             }
         }
 
+        [HttpGet("Pagination")]
+        [EndpointSummary("GetPagination")]
+        public async Task<IActionResult> GetPagination(int skipRows, int pagesize, string? sortedField, string? q, int order)
+        {
+            IQueryable<Branch> Branches = BranchQuery(q, sortedField, order);
+
+            int totalRecords = await context.Branches.CountAsync();
+            List<Branch> records = await Branches
+                .AsNoTracking()
+                .Skip(skipRows)
+                .Take(pagesize)
+                .ToListAsync();
+
+            return Ok(new DefaultResponseModel()
+            {
+                Success = true,
+                Message = "success pagination",
+                Statuscode = StatusCodes.Status200OK,
+                Data = new { records, totalRecords }
+            });
+
+        }
+
         [HttpPost]
         [EndpointSummary("Create new branch")]
         public async Task<IActionResult> CreateAsync(Branch branch)
@@ -127,7 +151,7 @@ namespace Hr_Testing.Controllers
                     Success = true,
                     Statuscode = StatusCodes.Status200OK,
                     Message = "Created Successfully",
-                    Data = BranchExist
+                    Data = branch
                 })
                 : BadRequest(new DefaultResponseModel()
                 {
@@ -214,6 +238,26 @@ namespace Hr_Testing.Controllers
                     Message = "Delete failed",
                     Data = null
                 });
+        }
+
+        [NonAction]
+        private IQueryable<Branch> BranchQuery(string? q,string? sortedField,int order)
+        {
+            IQueryable<Branch> query = context.Branches.AsQueryable();
+
+            if (!string.IsNullOrEmpty(sortedField))
+            {
+                query = query.OrderBy($"{sortedField} {(order > 0 ? "ascending" : "descending")}");
+            }
+
+            if (!string.IsNullOrEmpty(q))
+            {
+                q = q.ToLower();
+                query = query.Where(
+                    x => x.BranchId.ToString()!.Contains(q) ||
+                    (x.BranchName ?? string.Empty).Contains(q));
+            }
+            return query;
         }
     }
 }

@@ -1,10 +1,11 @@
-﻿
-using Microsoft.AspNetCore.Http;
+﻿using System.Linq.Dynamic.Core;
+
 using Microsoft.AspNetCore.Mvc;
 using Hr_Testing.Models;
 using Microsoft.EntityFrameworkCore;
 using Hr_Testing.Entities;
 using Hr_Testing.Data;
+
 
 namespace Hr_Testing.Controllers
 {
@@ -44,7 +45,7 @@ namespace Hr_Testing.Controllers
         public async Task<IActionResult> GetByIdAsync(int id)
         {
             Position? PositionData = await context.Positions.FindAsync(id);
-            if(PositionData == null)
+            if (PositionData == null)
             {
                 return NotFound(new DefaultResponseModel()
                 {
@@ -68,7 +69,7 @@ namespace Hr_Testing.Controllers
 
         [HttpGet("Status")]
         [EndpointSummary("Get positions by status")]
-        public async Task<IActionResult> GetByStatusAsync(bool status) 
+        public async Task<IActionResult> GetByStatusAsync(bool status)
         {
             List<Position> StatusData = await context.Positions.Where(e => e.Status == status).ToListAsync();
             if (StatusData == null)
@@ -96,42 +97,39 @@ namespace Hr_Testing.Controllers
         [HttpGet("PositionPagination")]
         [EndpointSummary("GetPositionPagination")]
 
-        public async Task<IActionResult> GetPagination(int page,int pagesize)
+        public async Task<IActionResult> GetPagination(int skipRows, int pageSize, string? q, string? sortField, int order)
         {
-            int totalPositions = await context.Positions.CountAsync();
-            List<Position> positions = await context.Positions
-                .Skip((page - 1) * pagesize)
-                .Take(pagesize)
-                .ToListAsync();
+            IQueryable<Position> postions = PositionQuery(q, sortField, order);
 
-            return positions != null && positions.Count > 0
-                ? Ok(new DefaultResponseModel()
-                {
-                    Success = true,
-                    Statuscode = StatusCodes.Status200OK,
-                    Message = "Sucessfully Pagination",
-                    Data = positions
-                })
-                : NotFound(new DefaultResponseModel()
-                {
-                    Success = false,
-                    Statuscode = StatusCodes.Status400BadRequest,
-                    Message = "Failed To Pagination",
-                    Data = null
-                });
+            int recordsTotal = await postions.CountAsync();
+            List<Position> records = await postions
+                    .AsNoTracking()
+                    .Skip(skipRows)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+
+            return Ok(new DefaultResponseModel()
+            {
+                Success = true,
+                Message = "success pagination",
+                Statuscode = StatusCodes.Status200OK,
+                Data = new { records, recordsTotal }
+            });
+
         }
 
         [HttpGet("Creation time Order")]
         [EndpointSummary("GetCreationTimeOrder")]
-        
+
         public async Task<IActionResult> GetAsync()
         {
             List<Position> creationTime = await context.Positions
-                .Where(p => !p.DeletedOn.HasValue )
+                .Where(p => !p.DeletedOn.HasValue)
                 .OrderByDescending(p => p.CreatedOn)
                 .ToListAsync();
 
-            if(creationTime.Count > 0)
+            if (creationTime.Count > 0)
             {
                 return Ok(new DefaultResponseModel()
                 {
@@ -155,7 +153,7 @@ namespace Hr_Testing.Controllers
 
         [HttpPost]
         [EndpointSummary("Create a new position")]
-        public async Task<IActionResult> CreateAsync(Position position) 
+        public async Task<IActionResult> CreateAsync(Position position)
         {
             bool existingPosition = await context.Positions.AnyAsync(p => p.PositionId == position.PositionId);
             if (existingPosition)
@@ -175,7 +173,7 @@ namespace Hr_Testing.Controllers
             position.Status = true;
             position.CreatedOn = DateTime.Now;
             context.Positions.Add(position);
-             
+
             return await context.SaveChangesAsync() > 0
                 ? Ok(new DefaultResponseModel()
                 {
@@ -281,6 +279,34 @@ namespace Hr_Testing.Controllers
                 Message = "Deleted positions fetched successfully",
                 Data = deletedPositions
             });
+        }
+
+
+        [NonAction]
+        private IQueryable<Position> PositionQuery(string? q, string? sortField, int order)
+        {
+            IQueryable<Position> query = context.Positions.AsQueryable();
+
+
+            // Sorting
+            if (!string.IsNullOrEmpty(sortField))
+            {
+                query = query.OrderBy($"{sortField} {(order > 0 ? "ascending" : "descending")}");
+            }
+
+            // Filtering
+
+            if (!string.IsNullOrEmpty(q))
+            {
+                q = q.ToLower();
+
+                query = query.Where(
+                    x => x.PositionId.ToString()!.Contains(q) ||
+                    (x.PositionName ?? string.Empty).Contains(q));
+
+            }
+
+            return query;
         }
     }
 }
