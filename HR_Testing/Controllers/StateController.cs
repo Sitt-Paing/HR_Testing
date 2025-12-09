@@ -4,6 +4,7 @@ using Hr_Testing.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Dynamic.Core;
 
 namespace Hr_Testing.Controllers
 {
@@ -63,6 +64,28 @@ namespace Hr_Testing.Controllers
                     Data = StateData
                 });
             }
+        }
+
+        [HttpGet("Pagination")]
+        [EndpointSummary("GetPagination")]
+        public async Task<IActionResult> GetPagination(int skipRows,int pagesize, string? q,string? sortedField,int order)
+        {
+            IQueryable<State> States = StateQuery(q, sortedField, order);
+            int totalStates = await context.States.CountAsync();
+
+            List<State> records = await States
+                .AsNoTracking()
+                .Skip(skipRows)
+                .Take(pagesize)
+                .ToListAsync();
+
+            return Ok(new DefaultResponseModel()
+            {
+                Success = true,
+                Statuscode = StatusCodes.Status200OK,
+                Message = "Success Pagination",
+                Data = new { records, totalStates }
+            });
         }
 
         [HttpPost]
@@ -202,6 +225,25 @@ namespace Hr_Testing.Controllers
                     Data = deletedState
                 });
             }
+        }
+
+        [NonAction]
+        private IQueryable<State> StateQuery(string? q, string? sortedField, int order)
+        {
+            IQueryable<State> query = context.States.AsQueryable();
+
+            if (!string.IsNullOrEmpty(sortedField))
+            {
+                query = query.OrderBy($"{sortedField} {(order > 0 ? "ascending" : "descending")}");
+            }
+
+            if (!string.IsNullOrEmpty(q))
+            {
+                q = q.ToLower();
+                query = query.Where(x => x.StateId.ToString().Contains(q) || (x.StateName ?? string.Empty).Contains(q));
+            }
+
+            return query;
         }
     }
 
