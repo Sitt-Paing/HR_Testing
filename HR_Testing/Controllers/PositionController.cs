@@ -121,6 +121,37 @@ namespace Hr_Testing.Controllers
                 });
         }
 
+        [HttpGet("Creation time Order")]
+        [EndpointSummary("GetCreationTimeOrder")]
+        
+        public async Task<IActionResult> GetAsync()
+        {
+            List<Position> creationTime = await context.Positions
+                .OrderByDescending(p => p.CreatedOn)
+                .ToListAsync();
+
+            if(creationTime.Count > 0)
+            {
+                return Ok(new DefaultResponseModel()
+                {
+                    Success = true,
+                    Statuscode = StatusCodes.Status200OK,
+                    Message = "Creation Time were retrieved successfully!",
+                    Data = creationTime
+                });
+            }
+            else
+            {
+                return NotFound(new DefaultResponseModel()
+                {
+                    Success = false,
+                    Statuscode = StatusCodes.Status400BadRequest,
+                    Message = "Retrieving data failed!",
+                    Data = null
+                });
+            }
+        }
+
         [HttpPost]
         [EndpointSummary("Create a new position")]
         public async Task<IActionResult> CreateAsync(Position position) 
@@ -141,7 +172,7 @@ namespace Hr_Testing.Controllers
             position.DepartmentId = position.DepartmentId;
             position.PositionName = position.PositionName;
             position.Status = true;
-            position.CreatedOn = DateTime.UtcNow;
+            position.CreatedOn = DateTime.Now;
             context.Positions.Add(position);
              
             return await context.SaveChangesAsync() > 0
