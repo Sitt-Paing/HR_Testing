@@ -187,7 +187,9 @@ namespace Hr_Testing.Controllers
                     Data = null
                 });
             }
-            context.Townships.Remove(township);
+
+            township.DeletedAt = DateTime.Now;
+            //context.Townships.Remove(township);
             return await context.SaveChangesAsync() > 0
                 ? Ok(new DefaultResponseModel()
                 {
@@ -203,6 +205,39 @@ namespace Hr_Testing.Controllers
                     Message = "Failed to delete township",
                     Data = null
                 });
+        }
+
+
+        [HttpGet("deleted")]
+        [EndpointSummary("GetDeletedData")]
+        public async Task<IActionResult> GetDeleteTownshipAsync()
+        {
+            List<township> deletedTownship = await context.Townships
+                .IgnoreQueryFilters()
+                .Where(p => p.DeletedAt != null)
+                .ToListAsync();
+
+            if (deletedTownship == null)
+            {
+                return NotFound(new DefaultResponseModel()
+                {
+                    Success = false,
+                    Statuscode = StatusCodes.Status404NotFound,
+                    Message = "Deleted Data not found",
+                    Data = null
+                });
+            }
+
+            else
+            {
+                return Ok(new DefaultResponseModel()
+                {
+                    Success = true,
+                    Statuscode = StatusCodes.Status200OK,
+                    Message = "Retrieving Deleted Data successfully",
+                    Data = deletedTownship
+                });
+            }
         }
     }
 }

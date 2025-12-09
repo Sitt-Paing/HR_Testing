@@ -191,7 +191,7 @@ namespace Hr_Testing.Controllers
             }
 
             streetData.DeletedAt = DateTime.Now;
-            context.Streets.Remove(streetData);
+            //context.Streets.Remove(streetData);
 
             return await context.SaveChangesAsync() > 0
                 ? Ok(new DefaultResponseModel()
@@ -208,6 +208,38 @@ namespace Hr_Testing.Controllers
                     Message = "Delete failed",
                     Data = null
                 });
+        }
+
+        [HttpGet("deleted")]
+        [EndpointSummary("GetDeletedData")]
+        public async Task<IActionResult> GetDeleteStreetAsync()
+        {
+            List<Street> deletedStreet = await context.Streets
+                .IgnoreQueryFilters()
+                .Where(p => p.DeletedAt != null)
+                .ToListAsync();
+
+            if(deletedStreet == null)
+            {
+                return NotFound(new DefaultResponseModel()
+                {
+                    Success = false,
+                    Statuscode = StatusCodes.Status404NotFound,
+                    Message = "Deleted Data not found",
+                    Data = null
+                });
+            }
+
+            else
+            {
+                return Ok(new DefaultResponseModel()
+                {
+                    Success = true,
+                    Statuscode = StatusCodes.Status200OK,
+                    Message = "Retrieving Deleted Data successfully",
+                    Data = deletedStreet
+                });
+            }
         }
     }
 }

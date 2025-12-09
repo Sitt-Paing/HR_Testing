@@ -153,7 +153,7 @@ namespace Hr_Testing.Controllers
                 });
             }
             state.DeletedAt = DateTime.UtcNow;
-            context.States.Remove(state);
+            //context.States.Remove(state);
             return await context.SaveChangesAsync() > 0
                 ? Ok(new DefaultResponseModel()
                 {
@@ -169,6 +169,39 @@ namespace Hr_Testing.Controllers
                     Message = "Failed to delete state",
                     Data = null
                 });
+        }
+
+
+        [HttpGet("deleted")]
+        [EndpointSummary("GetDeletedData")]
+        public async Task<IActionResult> GetDeleteStreetAsync()
+        {
+            List<State> deletedState = await context.States
+                .IgnoreQueryFilters()
+                .Where(p => p.DeletedAt != null)
+                .ToListAsync();
+
+            if (deletedState == null)
+            {
+                return NotFound(new DefaultResponseModel()
+                {
+                    Success = false,
+                    Statuscode = StatusCodes.Status404NotFound,
+                    Message = "Deleted Data not found",
+                    Data = null
+                });
+            }
+
+            else
+            {
+                return Ok(new DefaultResponseModel()
+                {
+                    Success = true,
+                    Statuscode = StatusCodes.Status200OK,
+                    Message = "Retrieving Deleted Data successfully",
+                    Data = deletedState
+                });
+            }
         }
     }
 

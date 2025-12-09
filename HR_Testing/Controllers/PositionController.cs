@@ -127,6 +127,7 @@ namespace Hr_Testing.Controllers
         public async Task<IActionResult> GetAsync()
         {
             List<Position> creationTime = await context.Positions
+                .Where(p => !p.DeletedOn.HasValue )
                 .OrderByDescending(p => p.CreatedOn)
                 .ToListAsync();
 
