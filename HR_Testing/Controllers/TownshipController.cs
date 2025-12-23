@@ -15,7 +15,7 @@ namespace Hr_Testing.Controllers
         [EndpointSummary("Get all townships")]
         public async Task<IActionResult> GetAsync()
         {
-            List<township> TownshipData = await context.Townships.ToListAsync();
+            List<Township> TownshipData = await context.Townships.ToListAsync();
             if (TownshipData == null)
             {
                 return NotFound(new DefaultResponseModel()
@@ -42,7 +42,7 @@ namespace Hr_Testing.Controllers
         [EndpointSummary("Get the township by Id")]
         public async Task<IActionResult> GetByIdAsync(int id)
         {
-            township? TownshipData = await context.Townships.FindAsync(id);
+            Township? TownshipData = await context.Townships.FindAsync(id);
             if (TownshipData == null)
             {
                 return NotFound(new DefaultResponseModel()
@@ -69,7 +69,7 @@ namespace Hr_Testing.Controllers
         [EndpointSummary("Get townships by State Id")]
         public async Task<IActionResult> GetByStateIdAsync(int stateId)
         {
-            IQueryable<township> filteredTownships =
+            IQueryable<Township> filteredTownships =
                 from t in context.Townships
                 join s in context.States on t.StateId equals s.StateId
                 where s.StateId == stateId
@@ -99,7 +99,7 @@ namespace Hr_Testing.Controllers
 
         [HttpPost]
         [EndpointSummary("Create a new township")]
-        public async Task<IActionResult> CreataeAsync(township township)
+        public async Task<IActionResult> CreataeAsync(Township township)
         {
             bool existingTownship = await context.Townships.AnyAsync(t => t.TownshipName == township.TownshipName);
             if (existingTownship)
@@ -138,9 +138,9 @@ namespace Hr_Testing.Controllers
 
         [HttpPut]
         [EndpointSummary("Update a township")]
-        public async Task<IActionResult> UpdateAsync(township updatedTownship)
+        public async Task<IActionResult> UpdateAsync(Township updatedTownship)
         {
-            township? township = await context.Townships.FirstOrDefaultAsync(t => t.TownshipId == updatedTownship.TownshipId);
+            Township? township = await context.Townships.FirstOrDefaultAsync(t => t.TownshipId == updatedTownship.TownshipId);
             if (township == null)
             {
                 return NotFound(new DefaultResponseModel()
@@ -176,7 +176,7 @@ namespace Hr_Testing.Controllers
         [EndpointSummary("Delete a township")]
         public async Task<IActionResult> DeleteAsync(int id)
         {
-            township? township = await context.Townships.FindAsync(id);
+            Township? township = await context.Townships.FindAsync(id);
             if (township == null)
             {
                 return NotFound(new DefaultResponseModel()
@@ -212,7 +212,7 @@ namespace Hr_Testing.Controllers
         [EndpointSummary("GetDeletedData")]
         public async Task<IActionResult> GetDeleteTownshipAsync()
         {
-            List<township> deletedTownship = await context.Townships
+            List<Township> deletedTownship = await context.Townships
                 .IgnoreQueryFilters()
                 .Where(p => p.DeletedAt != null)
                 .ToListAsync();

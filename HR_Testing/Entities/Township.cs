@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Hr_Testing.Entities;
 
 [Table("Township")]
-public partial class township
+public partial class Township
 {
     [Key]
     public int TownshipId { get; set; }
