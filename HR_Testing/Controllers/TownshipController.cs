@@ -136,11 +136,13 @@ namespace Hr_Testing.Controllers
                 });
         }
 
-        [HttpPut]
+
+
+        [HttpPut("{id}")]
         [EndpointSummary("Update a township")]
-        public async Task<IActionResult> UpdateAsync(Township updatedTownship)
+        public async Task<IActionResult> UpdateAsync(int id,Township updatedTownship)
         {
-            Township? township = await context.Townships.FirstOrDefaultAsync(t => t.TownshipId == updatedTownship.TownshipId);
+            Township? township = await context.Townships.FirstOrDefaultAsync(t => t.TownshipId == id);
             if (township == null)
             {
                 return NotFound(new DefaultResponseModel()
@@ -189,7 +191,7 @@ namespace Hr_Testing.Controllers
             }
 
             township.DeletedAt = DateTime.Now;
-            //context.Townships.Remove(township);
+            context.Townships.Remove(township);
             return await context.SaveChangesAsync() > 0
                 ? Ok(new DefaultResponseModel()
                 {

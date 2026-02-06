@@ -5,13 +5,14 @@ using Hr_Testing.Models;
 using Microsoft.EntityFrameworkCore;
 using Hr_Testing.Entities;
 using Hr_Testing.Data;
+using Hr_Testing.Service;
 
 
 namespace Hr_Testing.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PositionController(Hr_TestingDbContext context) : ControllerBase
+    public class PositionController(Hr_TestingDbContext context, ExportService exportService) : ControllerBase
     {
         [HttpGet]
         [EndpointSummary("Get all positions")]
@@ -41,13 +42,15 @@ namespace Hr_Testing.Controllers
         }
 
         [HttpGet("{id}")]
-        [EndpointSummary("Get position by ID")]
+        [EndpointSummary("Get position by id")]
         public async Task<IActionResult> GetByIdAsync(int id)
         {
-            Position? PositionData = await context.Positions.FindAsync(id);
-            if (PositionData == null)
+            var position = await context.Positions
+                .FirstOrDefaultAsync(e => e.PositionId == id);
+
+            if (position == null)
             {
-                return NotFound(new DefaultResponseModel()
+                return NotFound(new DefaultResponseModel
                 {
                     Success = false,
                     Statuscode = StatusCodes.Status404NotFound,
@@ -55,17 +58,16 @@ namespace Hr_Testing.Controllers
                     Data = null
                 });
             }
-            else
+
+            return Ok(new DefaultResponseModel
             {
-                return Ok(new DefaultResponseModel()
-                {
-                    Success = true,
-                    Statuscode = StatusCodes.Status200OK,
-                    Message = "Position retrieved successfully",
-                    Data = PositionData
-                });
-            }
+                Success = true,
+                Statuscode = StatusCodes.Status200OK,
+                Message = "Position retrieved successfully",
+                Data = position
+            });
         }
+
 
         [HttpGet("Status")]
         [EndpointSummary("Get positions by status")]
@@ -170,7 +172,7 @@ namespace Hr_Testing.Controllers
             position.PositionId = position.PositionId;
             position.DepartmentId = position.DepartmentId;
             position.PositionName = position.PositionName;
-            position.Status = true;
+            position.Status = position.Status;
             position.CreatedOn = DateTime.Now;
             context.Positions.Add(position);
 
@@ -191,14 +193,56 @@ namespace Hr_Testing.Controllers
                 });
         }
 
+        [HttpPost("excel")]
+        [EndpointSummary("Export Excel")]
+        [EndpointDescription("Orders Export")]
+        [Produces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")]
+        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> PostExcelAsync(string? q, string? sortField,
+            int order, [FromBody] KeyValuePair<string, string>[] columns)
+        {
+            IQueryable<Position> orders =
+                PositionQuery( q, sortField, order);
+
+            List<Position> records = await orders.ToListAsync();
+
+            if (records.Count == 0)
+            {
+                return BadRequest(new DefaultResponseModel
+                    {
+                        Message = "Failed to export excel.",
+                    });
+            }
+
+            // Generate the Excel file
+            Stream? stream =
+                exportService.ExportToExcelStreamSpecificColumns(records, columns, "Positions List");
+
+            if (stream == null)
+            {
+                return BadRequest(
+                    new DefaultResponseModel
+                    {
+                        Message = "Failed to export excel.",
+
+                    });
+            }
+
+            // Return the file as a stream
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Positions List.xlsx");
+        }
         [HttpPut("{id}")]
         [EndpointSummary("Update an existing position")]
-        public async Task<IActionResult> UpdateAsync(Position updatedPosition)
+        public async Task<IActionResult> UpdateAsync(int id, Position updatedPosition)
         {
-            Position? position = await context.Positions.FirstOrDefaultAsync(e => e.PositionId == updatedPosition.PositionId);
+
+            Position? position = await context.Positions
+                .FirstOrDefaultAsync(e => e.PositionId ==  id);
+
             if (position == null)
             {
-                return NotFound(new DefaultResponseModel()
+                return NotFound(new DefaultResponseModel
                 {
                     Success = false,
                     Statuscode = StatusCodes.Status404NotFound,
@@ -206,20 +250,21 @@ namespace Hr_Testing.Controllers
                     Data = null
                 });
             }
+
             position.PositionName = updatedPosition.PositionName;
             position.DepartmentId = updatedPosition.DepartmentId;
             position.Status = updatedPosition.Status;
             position.UpdatedOn = DateTime.UtcNow;
-            context.Positions.Update(position);
+
             return await context.SaveChangesAsync() > 0
-                ? Ok(new DefaultResponseModel()
+                ? Ok(new DefaultResponseModel
                 {
                     Success = true,
                     Statuscode = StatusCodes.Status200OK,
                     Message = "Position updated successfully",
                     Data = position
                 })
-                : BadRequest(new DefaultResponseModel()
+                : BadRequest(new DefaultResponseModel
                 {
                     Success = false,
                     Statuscode = StatusCodes.Status400BadRequest,
@@ -227,6 +272,7 @@ namespace Hr_Testing.Controllers
                     Data = null
                 });
         }
+
 
         [HttpDelete("{id}")]
         [EndpointSummary("Delete a position")]
@@ -245,7 +291,7 @@ namespace Hr_Testing.Controllers
             }
 
             position.DeletedOn = DateTime.UtcNow;
-            //context.Positions.Remove(position);
+            context.Positions.Remove(position);
             return await context.SaveChangesAsync() > 0
                 ? Ok(new DefaultResponseModel()
                 {
@@ -263,23 +309,23 @@ namespace Hr_Testing.Controllers
                 });
         }
 
-        [HttpGet("deleted")]
-        [EndpointSummary("GetDeletedPositions")]
-        public async Task<IActionResult> GetDeletedPositions()
-        {
-            List<Position> deletedPositions = await context.Positions
-                .IgnoreQueryFilters()
-                .Where(p => p.DeletedOn != null)
-                .ToListAsync();
+        //[HttpGet("deleted")]
+        //[EndpointSummary("GetDeletedPositions")]
+        //public async Task<IActionResult> GetDeletedPositions()
+        //{
+        //    List<Position> deletedPositions = await context.Positions
+        //        .IgnoreQueryFilters()
+        //        .Where(p => p.DeletedOn != null)
+        //        .ToListAsync();
 
-            return Ok(new DefaultResponseModel()
-            {
-                Success = true,
-                Statuscode = StatusCodes.Status200OK,
-                Message = "Deleted positions fetched successfully",
-                Data = deletedPositions
-            });
-        }
+        //    return Ok(new DefaultResponseModel()
+        //    {
+        //        Success = true,
+        //        Statuscode = StatusCodes.Status200OK,
+        //        Message = "Deleted positions fetched successfully",
+        //        Data = deletedPositions
+        //    });
+        //}
 
 
         [NonAction]
